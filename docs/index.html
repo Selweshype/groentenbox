@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Groentebox-kok</title>
+<meta name="description" content="Upload je groentebox-mail en krijg een vegetarisch weekmenu dat alles opmaakt.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <svg id="logo" class="logo" viewBox="0 0 120 100" role="img" aria-label="Logo: groentekrat met de groente uit je box"></svg>
+    <div class="brand-text">
+      <h1>Groentebox<span>-</span>kok</h1>
+      <p class="lead">Upload een foto van je bezorgmail of brief. Je krijgt een vegetarisch weekmenu dat alles uit je box opmaakt, met wat het snelst bederft eerst.</p>
+    </div>
+  </header>
+
+  <p class="status" id="status" hidden></p>
+
+  <!-- INSTELLINGEN: eigen API-sleutel -->
+  <details class="panel keypanel" id="keypanel">
+    <summary><span id="key-summary">Instellingen: API-sleutel</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <p class="note">Deze site praat rechtstreeks met Claude via je eigen Anthropic API-sleutel. Maak er een aan op <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+    <form class="field" id="key-form" autocomplete="off">
+      <label for="key-input">Jouw API-sleutel</label>
+      <input type="password" id="key-input" placeholder="Plak hier je sleutel" spellcheck="false" autocomplete="off">
+      <div class="row">
+        <button class="btn" type="submit">Sleutel opslaan</button>
+        <button class="btn ghost" type="button" id="key-clear">Sleutel wissen</button>
+      </div>
+    </form>
+    <p class="ok" id="key-ok" role="status" hidden></p>
+    <p class="note">Je sleutel blijft alleen in deze browser (localStorage). Hij gaat nergens anders heen dan naar api.anthropic.com. Gebruik deze site niet op een gedeelde computer.</p>
+  </details>
+
+  <!-- 1. BOX -->
+  <section aria-labelledby="h-box">
+    <h2 id="h-box"><span class="step">1</span>Wat zit er in je box?</h2>
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tab-foto" aria-selected="true">Foto of screenshot</button>
+        <button class="tab" role="tab" id="tab-tekst" aria-selected="false">Tekst plakken</button>
+      </div>
+      <div id="pane-foto" style="display:flex;flex-direction:column;gap:12px">
+        <label class="drop" id="drop" for="file">
+          <strong>Kies foto's of sleep ze hierheen</strong>
+          <small>Foto van de brief, of een screenshot van de mail. Plakken (Ctrl+V) werkt ook.</small>
+        </label>
+        <input type="file" id="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+      <div id="pane-tekst" hidden>
+        <textarea id="paste" placeholder="Plak hier de tekst uit de bezorgmail…"></textarea>
+      </div>
+      <div class="row">
+        <button class="btn" id="read">Lees box uit</button>
+      </div>
+      <div class="busy" id="read-busy" hidden><span class="spin" aria-hidden="true"></span><span>Claude leest je box…</span><span class="t" id="read-time">0 s</span><button class="btn ghost stop" id="read-stop" type="button">Stop</button><span class="hint" id="read-hint" hidden>Een scherpe, rechte foto leest het snelst.</span></div>
+      <p class="msg" id="read-msg" role="alert" hidden></p>
+      <p class="ok" id="read-ok" role="status" hidden></p>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <span class="label">Inhoud van je box</span>
+        <span class="badge" id="items-badge">Voorbeeld</span>
+      </div>
+      <ul class="items" id="items"></ul>
+      <div class="legend">
+        <span><i class="dot kort"></i>Kort houdbaar: eerst op</span>
+        <span><i class="dot middel"></i>Midden van de week</span>
+        <span><i class="dot lang"></i>Lang houdbaar</span>
+      </div>
+      <form class="add" id="add">
+        <input type="text" id="add-name" placeholder="Iets toevoegen, bv. courgette" aria-label="Naam">
+        <input type="text" id="add-amt" placeholder="500 g" aria-label="Hoeveelheid">
+        <button class="btn ghost" type="submit">Toevoegen</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- 2. INSTELLINGEN -->
+  <section aria-labelledby="h-set">
+    <h2 id="h-set"><span class="step">2</span>Jouw week</h2>
+    <div class="panel">
+      <div class="settings">
+        <div class="field"><span class="label">Personen</span><div class="seg" data-key="personen"><button>2</button><button>3</button><button>4</button></div></div>
+        <div class="field"><span class="label">Avonden koken</span><div class="seg" data-key="avonden"><button>3</button><button>4</button><button>5</button></div></div>
+        <div class="field"><span class="label">Max. kooktijd</span><div class="seg" data-key="tijd"><button>30</button><button>45</button><button>60</button></div></div>
+      </div>
+      <div class="field">
+        <label for="voorraad">Heb je nog andere producten die mee moeten in het menu?</label>
+        <textarea id="voorraad" style="min-height:80px" placeholder="bv. halve pot pesto, 300 g rijst, 2 courgettes, blok tofu, restje geitenkaas"></textarea>
+      </div>
+      <div class="field">
+        <label for="wens">Extra wens (mag leeg)</label>
+        <input type="text" id="wens" placeholder="bv. één ovenschotel, geen koriander, iets voor de lunch">
+      </div>
+      <button class="btn alt" id="plan">Maak weekmenu</button>
+      <div class="busy" id="plan-busy" hidden><span class="spin" aria-hidden="true"></span><span>Claude maakt je weekmenu…</span><span class="t" id="plan-time">0 s</span><button class="btn ghost stop" id="plan-stop" type="button">Stop</button><span class="hint" id="plan-hint" hidden>Recepten verschijnen één voor één zodra ze klaar zijn.</span></div>
+      <p class="msg" id="plan-msg" role="alert" hidden></p>
+    </div>
+  </section>
+
+  <!-- 3. MENU -->
+  <section aria-labelledby="h-menu">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="h-menu"><span class="step">3</span>Weekmenu</h2>
+      <span class="badge" id="menu-badge">Voorbeeld</span>
+    </div>
+    <p class="lead">Zet een recept aan of uit met de schakelaar. Tik op <b>Toon recept</b> voor ingrediënten en bereiding. De boodschappenlijst past zich direct aan.</p>
+    <div class="menu" id="menu"></div>
+    <p class="warn" id="unused" hidden></p>
+    <div class="panel extras" id="extras-panel">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <h3>Extra boodschappen</h3>
+        <p class="count" id="shop-count"></p>
+        <ul id="shop"></ul>
+        <button class="btn ghost" id="copy">Kopieer lijst</button>
+        <p class="msg" id="copy-msg" role="alert" hidden></p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <h3>Restjes</h3>
+        <p id="rest"></p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toast-text"></span><button type="button" id="toast-undo">Ongedaan maken</button></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
